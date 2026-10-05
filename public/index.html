@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Шахматка — 433 квартиры</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f4f6f8; color: #1f2937; padding: 20px; }
+  header { max-width: 1600px; margin: 0 auto 20px;
+    display: flex; flex-wrap: wrap; gap: 12px;
+    align-items: center; justify-content: space-between; }
+  h1 { font-size: 22px; }
+  .stats { display: flex; gap: 16px; font-size: 14px; color: #4b5563; }
+  .stats b { color: #111827; }
+  .toolbar { max-width: 1600px; margin: 0 auto 18px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .toolbar button, .toolbar input {
+    padding: 9px 14px; border: 1px solid #d1d5db;
+    border-radius: 10px; background: #fff; font-size: 14px;
+    cursor: pointer; transition: .15s; }
+  .toolbar button:hover { background: #eef2f7; }
+  .toolbar input { flex: 1; min-width: 180px; cursor: text; }
+  .admin-badge { background: #2563eb; color: #fff; padding: 6px 12px;
+    border-radius: 8px; font-size: 13px; font-weight: 600; }
+  .building { max-width: 1600px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 1200px) { .building { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 900px)  { .building { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px)  { .building { grid-template-columns: 1fr; } }
+  .entrance { background: #fff; border-radius: 16px; padding: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+  .entrance h2 { font-size: 15px; text-align: center;
+    margin-bottom: 4px; color: #374151; }
+  .entrance .range { font-size: 11px; text-align: center;
+    color: #9ca3af; margin-bottom: 10px; }
+  .floors { display: flex; flex-direction: column-reverse; gap: 5px; }
+  .floor { display: grid; gap: 5px; }
+  .flat { border-radius: 8px; padding: 9px 4px; text-align: center;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    border: 2px solid transparent; transition: transform .12s, box-shadow .12s;
+    user-select: none; overflow: hidden; }
+  .flat:hover { transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,.15); }
+  .flat small { display: block; font-weight: 400; font-size: 10px;
+    opacity: .85; margin-top: 2px; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  .empty { background: #d1fae5; color: #065f46; }
+  .owner { background: #dbeafe; color: #1e40af; }
+  .rent  { background: #fef3c7; color: #92400e; }
+  .debt  { background: #fee2e2; color: #991b1b; }
+  .legend { max-width: 1600px; margin: 20px auto 0;
+    display: flex; flex-wrap: wrap; gap: 14px;
+    font-size: 13px; color: #4b5563; }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 14px; height: 14px; border-radius: 4px; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px; z-index: 10; }
+  .modal.open { display: flex; }
+  .modal-card { background: #fff; border-radius: 16px; padding: 22px;
+    width: 100%; max-width: 380px;
+    box-shadow: 0 20px 40px rgba(0,0,0,.2); }
+  .modal-card h3 { margin-bottom: 14px; }
+  .modal-card label { display: block; font-size: 13px;
+    color: #4b5563; margin: 10px 0 4px; }
+  .modal-card input, .modal-card select, .modal-card textarea {
+    width: 100%; padding: 9px 10px; border: 1px solid #d1d5db;
+    border-radius: 8px; font-size: 14px; font-family: inherit; }
+  .modal-card input:disabled, .modal-card select:disabled,
+  .modal-card textarea:disabled {
+    background: #f9fafb; color: #6b7280; cursor: not-allowed; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .modal-actions button { flex: 1; padding: 10px;
+    border-radius: 10px; border: none; font-size: 14px; cursor: pointer; }
+  .btn-save { background: #2563eb; color: #fff; }
+  .btn-save:hover { background: #1d4ed8; }
+  .btn-save:disabled { background: #9ca3af; cursor: not-allowed; }
+  .btn-cancel { background: #e5e7eb; color: #374151; }
+  .btn-cancel:hover { background: #d1d5db; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏢 Шахматка — 8 подъездов, 433 квартиры</h1>
+  <div class="stats" id="stats"></div>
+</header>
+
+<div class="toolbar">
+  <input id="search" placeholder="🔍 Поиск: № квартиры или ФИО..." />
+  <span id="adminArea"></span>
+</div>
+
+<div class="building" id="building"></div>
+
+<div class="legend">
+  <span><i class="dot empty"></i> Пустая / нет данных</span>
+  <span><i class="dot owner"></i> Собственник проживает</span>
+  <span><i class="dot rent"></i> Сдаётся</span>
+  <span><i class="dot debt"></i> Есть задолженность</span>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <h3 id="modalTitle">Квартира</h3>
+    <label>ФИО жильца</label>
+    <input id="fio" placeholder="Иванов Иван Иванович" />
+    <label>Телефон</label>
+    <input id="phone" placeholder="+7 900 000-00-00" />
+    <label>Статус</label>
+    <select id="status">
+      <option value="empty">Пустая / нет данных</option>
+      <option value="owner">Собственник проживает</option>
+      <option value="rent">Сдаётся</option>
+      <option value="debt">Есть задолженность</option>
+    </select>
+    <label>Заметка</label>
+    <textarea id="note" rows="2" placeholder="Например: долг за 3 месяца"></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Закрыть</button>
+      <button class="btn-save" id="saveBtn" onclick="saveFlat()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const FLOORS = 9;
+const ENTRANCES_CONFIG = [
+  { ground: 4, other: 5 },
+  { ground: 5, other: 6 },
+  { ground: 4, other: 5 },
+  { ground: 5, other: 6 },
+  { ground: 7, other: 8 },
+  { ground: 4, other: 5 },
+  { ground: 7, other: 8 },
+  { ground: 5, other: 6 }
+];
+
+function computeEntrances() {
+  let running = 1;
+  return ENTRANCES_CONFIG.map((cfg, idx) => {
+    const count = cfg.ground + cfg.other * (FLOORS - 1);
+    const o = { number: idx + 1, start: running, end: running + count - 1,
+                count, ground: cfg.ground, other: cfg.other };
+    running += count;
+    return o;
+  });
+}
+const ENTRANCES = computeEntrances();
+const TOTAL_FLATS = ENTRANCES[ENTRANCES.length - 1].end;
+
+let state = { flats: {}, admin: false, current: null };
+
+function getToken() { return localStorage.getItem('adminToken'); }
+function setToken(t) {
+  if (t) localStorage.setItem('adminToken', t);
+  else localStorage.removeItem('adminToken');
+  state.admin = !!t;
+  renderAdminArea();
+}
+
+async function loadData() {
+  try {
+    const res = await fetch('/api/data');
+    const { flats } = await res.json();
+    state.flats = {};
+    for (const f of flats) state.flats[f.number] = f;
+    render();
+  } catch (e) {
+    console.error('Ошибка загрузки:', e);
+  }
+}
+
+function flatNumber(entranceObj, floor, pos) {
+  let offset = 0;
+  for (let f = 1; f < floor; f++) {
+    offset += (f === 1) ? entranceObj.ground : entranceObj.other;
+  }
+  return entranceObj.start + offset + (pos - 1);
+}
+
+function render() {
+  const building = document.getElementById('building');
+  building.innerHTML = '';
+  const query = document.getElementById('search').value.trim().toLowerCase();
+
+  ENTRANCES.forEach(entr => {
+    const entrDiv = document.createElement('div');
+    entrDiv.className = 'entrance';
+    entrDiv.innerHTML = '<h2>Подъезд ' + entr.number + '</h2>' +
+      '<div class="range">кв. ' + entr.start + '–' + entr.end + ' (' + entr.count + ')</div>';
+    const floorsDiv = document.createElement('div');
+    floorsDiv.className = 'floors';
+    const maxOnFloor = Math.max(entr.ground, entr.other);
+
+    for (let f = 1; f <= FLOORS; f++) {
+      const countOnFloor = (f === 1) ? entr.ground : entr.other;
+      const floorDiv = document.createElement('div');
+      floorDiv.className = 'floor';
+      floorDiv.style.gridTemplateColumns = 'repeat(' + maxOnFloor + ', 1fr)';
+
+      for (let p = 1; p <= countOnFloor; p++) {
+        const num = flatNumber(entr, f, p);
+        const info = state.flats[num] || {};
+        const status = info.status || 'empty';
+        const fio = info.fio || '';
+
+        if (query && String(num).indexOf(query) === -1 &&
+            fio.toLowerCase().indexOf(query) === -1) {
+          const stub = document.createElement('div');
+          stub.style.visibility = 'hidden';
+          floorDiv.appendChild(stub);
+          continue;
+        }
+
+        const cell = document.createElement('div');
+        cell.className = 'flat ' + status;
+        const shortName = fio ? fio.split(' ')[0] : '';
+        cell.innerHTML = num + (shortName ? '<small>' + shortName + '</small>' : '');
+        cell.title = 'Кв. ' + num + (fio ? ' — ' + fio : '');
+        cell.onclick = () => openModal(num);
+        floorDiv.appendChild(cell);
+      }
+      floorsDiv.appendChild(floorDiv);
+    }
+    entrDiv.appendChild(floorsDiv);
+    building.appendChild(entrDiv);
+  });
+  renderStats();
+}
+
+function renderStats() {
+  const filled = Object.values(state.flats)
+    .filter(v => v.status && v.status !== 'empty').length;
+  const debt = Object.values(state.flats)
+    .filter(v => v.status === 'debt').length;
+  document.getElementById('stats').innerHTML =
+    'Всего: <b>' + TOTAL_FLATS + '</b> · Заполнено: <b>' + filled +
+    '</b> · Должников: <b>' + debt + '</b>';
+}
+
+function openModal(num) {
+  state.current = num;
+  const info = state.flats[num] || {};
+  document.getElementById('modalTitle').textContent =
+    'Квартира № ' + num + (state.admin ? '' : ' (только просмотр)');
+  document.getElementById('fio').value = info.fio || '';
+  document.getElementById('phone').value = info.phone || '';
+  document.getElementById('status').value = info.status || 'empty';
+  document.getElementById('note').value = info.note || '';
+
+  const disabled = !state.admin;
+  ['fio','phone','status','note'].forEach(id => {
+    document.getElementById(id).disabled = disabled;
+  });
+  document.getElementById('saveBtn').disabled = disabled;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+async function saveFlat() {
+  if (!state.admin) return;
+  const body = {
+    number: state.current,
+    fio: document.getElementById('fio').value.trim(),
+    phone: document.getElementById('phone').value.trim(),
+    status: document.getElementById('status').value,
+    note: document.getElementById('note').value.trim()
+  };
+  const res = await fetch('/api/flat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Token': getToken() },
+    body: JSON.stringify(body)
+  });
+  if (res.ok) { await loadData(); closeModal(); }
+  else alert('Ошибка сохранения');
+}
+
+function renderAdminArea() {
+  const area = document.getElementById('adminArea');
+  area.innerHTML = state.admin
+    ? '<span class="admin-badge">👑 Админ</span>' +
+      '<button onclick="logout()">Выйти</button>'
+    : '<button onclick="login()">🔑 Вход для админа</button>';
+}
+
+function login() {
+  const pwd = prompt('Введите пароль администратора:');
+  if (!pwd) return;
+  fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: pwd })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) { setToken(pwd); alert('Вы вошли как администратор'); }
+    else alert('Неверный пароль');
+  });
+}
+
+function logout() { setToken(null); alert('Вы вышли'); }
+
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target.id === 'modal') closeModal();
+});
+setToken(getToken());
+loadData();
+</script>
+</body>
+</html>
