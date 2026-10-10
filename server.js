@@ -21,9 +21,12 @@ async function initDB() {
       fio TEXT DEFAULT '',
       phone TEXT DEFAULT '',
       status TEXT DEFAULT 'empty',
-      note TEXT DEFAULT ''
+      note TEXT DEFAULT '',
+      car TEXT DEFAULT ''
     );
   `);
+  // На случай, если таблица уже создана без колонки car
+  await pool.query(`ALTER TABLE flats ADD COLUMN IF NOT EXISTS car TEXT DEFAULT '';`);
   console.log('✅ База готова');
 }
 
@@ -49,19 +52,20 @@ app.post('/api/flat', async (req, res) => {
   if (req.headers['x-admin-token'] !== ADMIN_PASSWORD) {
     return res.status(403).json({ error: 'Нет доступа' });
   }
-  const { number, fio, phone, status, note } = req.body;
+  const { number, fio, phone, status, note, car } = req.body;
   if (!number) return res.status(400).json({ error: 'Нет номера' });
 
   try {
     await pool.query(`
-      INSERT INTO flats (number, fio, phone, status, note)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO flats (number, fio, phone, status, note, car)
+      VALUES ($1, $2, $3, $4, $5, $6)
       ON CONFLICT (number) DO UPDATE SET
         fio = EXCLUDED.fio,
         phone = EXCLUDED.phone,
         status = EXCLUDED.status,
-        note = EXCLUDED.note
-    `, [number, fio || '', phone || '', status || 'empty', note || '']);
+        note = EXCLUDED.note,
+        car = EXCLUDED.car
+    `, [number, fio || '', phone || '', status || 'empty', note || '', car || '']);
     res.json({ ok: true });
   } catch (e) {
     console.error('Ошибка записи:', e);
