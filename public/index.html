@@ -24,11 +24,13 @@
   .toolbar input { flex: 1; min-width: 180px; cursor: text; }
   .admin-badge { background: #2563eb; color: #fff; padding: 6px 12px;
     border-radius: 8px; font-size: 13px; font-weight: 600; }
+
   .building { max-width: 1600px; margin: 0 auto;
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
   @media (max-width: 1200px) { .building { grid-template-columns: repeat(3, 1fr); } }
   @media (max-width: 900px)  { .building { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 600px)  { .building { grid-template-columns: 1fr; } }
+
   .entrance { background: #fff; border-radius: 16px; padding: 12px;
     box-shadow: 0 2px 10px rgba(0,0,0,.06); }
   .entrance h2 { font-size: 15px; text-align: center;
@@ -37,6 +39,7 @@
     color: #9ca3af; margin-bottom: 10px; }
   .floors { display: flex; flex-direction: column-reverse; gap: 5px; }
   .floor { display: grid; gap: 5px; }
+
   .flat { border-radius: 8px; padding: 9px 4px; text-align: center;
     font-size: 12px; font-weight: 600; cursor: pointer;
     border: 2px solid transparent; transition: transform .12s, box-shadow .12s;
@@ -46,15 +49,18 @@
   .flat small { display: block; font-weight: 400; font-size: 10px;
     opacity: .85; margin-top: 2px; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis; }
+
   .empty { background: #d1fae5; color: #065f46; }
   .owner { background: #dbeafe; color: #1e40af; }
   .rent  { background: #fef3c7; color: #92400e; }
   .debt  { background: #fee2e2; color: #991b1b; }
+
   .legend { max-width: 1600px; margin: 20px auto 0;
     display: flex; flex-wrap: wrap; gap: 14px;
     font-size: 13px; color: #4b5563; }
   .legend span { display: flex; align-items: center; gap: 6px; }
   .dot { width: 14px; height: 14px; border-radius: 4px; }
+
   .modal { position: fixed; inset: 0; background: rgba(0,0,0,.45);
     display: none; align-items: center; justify-content: center;
     padding: 20px; z-index: 10; }
@@ -89,7 +95,7 @@
 </header>
 
 <div class="toolbar">
-  <input id="search" placeholder="🔍 Поиск: № квартиры или ФИО..." />
+  <input id="search" placeholder="🔍 Поиск: № квартиры, ФИО или авто..." />
   <span id="adminArea"></span>
 </div>
 
@@ -99,7 +105,6 @@
   <span><i class="dot empty"></i> Пустая / нет данных</span>
   <span><i class="dot owner"></i> Собственник проживает</span>
   <span><i class="dot rent"></i> Сдаётся</span>
-  <span><i class="dot debt"></i> Есть задолженность</span>
 </div>
 
 <div class="modal" id="modal">
@@ -114,10 +119,11 @@
       <option value="empty">Пустая / нет данных</option>
       <option value="owner">Собственник проживает</option>
       <option value="rent">Сдаётся</option>
-      <option value="debt">Есть задолженность</option>
     </select>
+    <label>Авто (номер и марка)</label>
+    <input id="car" />
     <label>Заметка</label>
-    <textarea id="note" rows="2" placeholder="Например: долг за 3 месяца"></textarea>
+    <textarea id="note" rows="2"></textarea>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Закрыть</button>
       <button class="btn-save" id="saveBtn" onclick="saveFlat()">Сохранить</button>
@@ -206,9 +212,13 @@ function render() {
         const info = state.flats[num] || {};
         const status = info.status || 'empty';
         const fio = info.fio || '';
+        const car = info.car || '';
 
-        if (query && String(num).indexOf(query) === -1 &&
-            fio.toLowerCase().indexOf(query) === -1) {
+        const matchesNum = String(num).indexOf(query) !== -1;
+        const matchesFio = fio.toLowerCase().indexOf(query) !== -1;
+        const matchesCar = car.toLowerCase().indexOf(query) !== -1;
+
+        if (query && !matchesNum && !matchesFio && !matchesCar) {
           const stub = document.createElement('div');
           stub.style.visibility = 'hidden';
           floorDiv.appendChild(stub);
@@ -219,7 +229,9 @@ function render() {
         cell.className = 'flat ' + status;
         const shortName = fio ? fio.split(' ')[0] : '';
         cell.innerHTML = num + (shortName ? '<small>' + shortName + '</small>' : '');
-        cell.title = 'Кв. ' + num + (fio ? ' — ' + fio : '');
+        cell.title = 'Кв. ' + num
+          + (fio ? ' — ' + fio : '')
+          + (car ? ' — 🚗 ' + car : '');
         cell.onclick = () => openModal(num);
         floorDiv.appendChild(cell);
       }
@@ -234,11 +246,8 @@ function render() {
 function renderStats() {
   const filled = Object.values(state.flats)
     .filter(v => v.status && v.status !== 'empty').length;
-  const debt = Object.values(state.flats)
-    .filter(v => v.status === 'debt').length;
   document.getElementById('stats').innerHTML =
-    'Всего: <b>' + TOTAL_FLATS + '</b> · Заполнено: <b>' + filled +
-    '</b> · Должников: <b>' + debt + '</b>';
+    'Всего: <b>' + TOTAL_FLATS + '</b> · Заполнено: <b>' + filled + '</b>';
 }
 
 function openModal(num) {
@@ -250,9 +259,10 @@ function openModal(num) {
   document.getElementById('phone').value = info.phone || '';
   document.getElementById('status').value = info.status || 'empty';
   document.getElementById('note').value = info.note || '';
+  document.getElementById('car').value = info.car || '';
 
   const disabled = !state.admin;
-  ['fio','phone','status','note'].forEach(id => {
+  ['fio','phone','status','note','car'].forEach(id => {
     document.getElementById(id).disabled = disabled;
   });
   document.getElementById('saveBtn').disabled = disabled;
@@ -268,7 +278,8 @@ async function saveFlat() {
     fio: document.getElementById('fio').value.trim(),
     phone: document.getElementById('phone').value.trim(),
     status: document.getElementById('status').value,
-    note: document.getElementById('note').value.trim()
+    note: document.getElementById('note').value.trim(),
+    car: document.getElementById('car').value.trim()
   };
   const res = await fetch('/api/flat', {
     method: 'POST',
@@ -295,11 +306,11 @@ function login() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password: pwd })
   })
-  .then(r => r.json())
-  .then(d => {
-    if (d.ok) { setToken(pwd); alert('Вы вошли как администратор'); }
-    else alert('Неверный пароль');
-  });
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) { setToken(pwd); alert('Вы вошли как администратор'); }
+      else alert('Неверный пароль');
+    });
 }
 
 function logout() { setToken(null); alert('Вы вышли'); }
